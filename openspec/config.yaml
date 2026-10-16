@@ -1,0 +1,42 @@
+schema: spec-driven
+
+# Project context for a personal fork of T3 Code (pingdotgg/t3code).
+context: |
+  This repository is a personal fork of T3 Code. `main` tracks upstream unchanged;
+  all fork work lives on the `my-fork` branch and is rebased onto upstream regularly.
+  Minimise merge conflicts: put new behaviour in new files and folders, and keep edits
+  to existing upstream files to small, clearly marked hook points (a few lines each).
+  Mark every edit to an existing upstream file with a `// fork:` comment so it is easy
+  to find when rebasing.
+  Prefer reusing existing T3 Code systems (settings schema, glass surfaces, right-panel
+  surfaces, review comments, project file RPCs) over adding parallel ones.
+  No server or contract changes unless a design explicitly justifies them.
+  Do not add dependencies (runtime or dev): every change to pnpm-lock.yaml conflicts on rebase.
+  The fork is built and run on a headless Linux home server and used from browsers over
+  Tailscale. Web build must keep working; the desktop build must still compile.
+  Agents work in the development checkout; the running service uses a separate stable
+  checkout, so never restart or rebuild the running service as part of a task.
+
+rules:
+  proposal:
+    - Start with an "## Original request" section quoting the user's request verbatim, so later sessions and the reviewer can check the work against it.
+  tasks:
+    - Every group ends with `pnpm typecheck`, `pnpm lint` and the group's tests (`vp test run <files>`) passing.
+    - Name the upstream files a task touches, and keep each such edit small.
+    - Tag every task [light], [standard] or [heavy] right after its number, e.g. `- [ ] 1.1 [standard] ...`, with a one-line reason for each [light] or [heavy].
+    - Manual checks use `pnpm dev:share` (publishes the dev server over the tailnet and prints a pairing URL), never `pnpm dev:desktop` (no display on the server).
+  design:
+    - List every existing upstream file the change edits under a "Touch points" heading.
+
+operations:
+  apply:
+    guidance:
+      - Do not implement tasks yourself. Delegate each task to the subagent named by its tag - [light] to worker-light, [standard] to worker, [heavy] to worker-heavy - passing the change id, the task text and its verification step.
+      - Run independent tasks in parallel (at most 3 at once); run dependent tasks in order.
+      - Tick a task `- [x]` yourself only after its worker reports its verification passed. Workers never edit tasks.md.
+      - If worker-light says a task needs judgment, re-tag it [standard] in tasks.md and resend it.
+      - When all tasks are ticked, send the full diff, proposal (including its Original request), specs and design to the reviewer subagent. Send blockers and should-fix items back to the same tier; a task rejected twice moves up one tier; stop after 2 review rounds and ask the user.
+      - Check the feature by hand with `pnpm dev:share` before reporting a UI change done.
+  archive:
+    guidance:
+      - Only archive when the user asks; confirm `git grep -n "// fork:"` lists only the planned touch points first.
